@@ -4,7 +4,7 @@
     "arch": {
         "type": "SarModel",
         "args": {
-            "num_cat_pkl_path": "/media/hd03/axot_data/sar/data/num_cat_dict.yml",
+            "num_cat_pkl_path": "/home/nanaeilish/projects/Github/esun_sar_baseline/num_cat_dict.yml",
             "emb_feat_dim": 32,
             "hidden_size": 256,
             "hidden_size_coeff": 4,
@@ -21,7 +21,7 @@
     "data_loader": {
         "type": "MaxLenDataLoader",
         "args": {
-            "data_path": "/media/hd03/axot_data/sar/data/cust_data.pkl",
+            "data_path": "/home/nanaeilish/projects/Github/esun_sar_baseline/cust_data.pkl",
             "max_len": 1024,
             "batch_size": 64,
             "shuffle": true,
