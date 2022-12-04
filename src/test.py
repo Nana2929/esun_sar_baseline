@@ -1,7 +1,6 @@
 import argparse
 import os
 from pdb import set_trace as bp
-
 import torch
 from tqdm import tqdm
 import pandas as pd
@@ -63,26 +62,27 @@ def main(config, output_dir, num_fold=5):
             if k not in outputs:
                 outputs[k] = []
             outputs[k].append(v)
-    
+
     # mean
     for k, v in outputs.items():
         outputs[k] = sum(v) / num_fold
-    
-    # generate submission
-    all_alert_keys = pd.read_csv('/media/hd03/axot_data/sar/data/sample_submission.csv').alert_key
+
+    # generate submission by ensemble of 5folds
+    all_alert_keys = pd.read_csv(sample_path).alert_key
     for alert_key in all_alert_keys:
         if alert_key not in outputs:
             outputs[alert_key] = 0
-    
+
     submit = pd.DataFrame(
         data={
-            'alert_key': list(outputs.keys()), 
+            'alert_key': list(outputs.keys()),
             'probability': list(outputs.values())
         }
     )
     submit['alery_keys'] = submit['alery_keys'].astype(int)
     submit.sort_values(by='probability', inplace=True)
-    submit.to_csv(f'{output_dir}/submission.csv', index=None)
+    submit.to_csv(f'{output_dir}/submission_{args.suffix}.csv', index=None)
+
 
 if __name__ == '__main__':
     args = argparse.ArgumentParser(description='PyTorch Template')
@@ -93,14 +93,23 @@ if __name__ == '__main__':
     args.add_argument('-d', '--device', default=None, type=str,
                       help='indices of GPUs to enable (default: all)')
     args.add_argument('-t', '--output_type', type=str, default='top3_indices', choices=['top3_indices', 'logits'])
-    args.add_argument('-o', '--output_dir', default='./submission.csv', type=str,
+    args.add_argument('-o', '--output_dir', default='/home/nanaeilish/projects/Github/esun_sar_baseline/save_dir/bigger_tp99', type=str,
                       help='output_dir')
-
-
+    args.add_argument('-s', '--suffix', default='5fold-ensemble', type=str,
+                      help='suffix information of the output file')
+    args.add_argument('-sp', '--sample_path', default='/home/nanaeilish/projects/Github/esun_sar_baseline/sample_submission.csv',
+                    type=str, help='sample submission file for public and private Leaderboard')
     config = ConfigParser.from_args(args, test=True)
     args = args.parse_args()
 
-    print(f'run test for {args.output_dir}')
+    print(f'Run test for {args.output_dir}, information: {args.suffix}.')
     output_type = args.output_type
     output_dir = args.output_dir
+    sample_path = args.sample_path
+
+    os.makedirs(output_dir, exist_ok=True)
     main(config, output_dir)
+# mb activate esun-ai-open
+# 1. process_data/data_config.py sar_flag那行要改成 TARGET type
+# 2. 要確認test.py那裡有吃到
+# py test.py -c /home/nanaeilish/projects/Github/esun_sar_baseline/save_dir/bigger_tp99/fold0/config.json -d 0 -s 5fold-ensemble-1202

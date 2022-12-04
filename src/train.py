@@ -10,7 +10,6 @@ import model.model as module_arch
 from parse_config import ConfigParser
 from trainer import Trainer
 from utils import prepare_device
-
 from ranger import Ranger
 
 
@@ -23,16 +22,21 @@ torch.backends.cudnn.benchmark = False
 os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
 np.random.seed(SEED)
 
+import warnings
+# suppress `/home/nanaeilish/projects/Github/Ranger-Deep-Learning-Optimizer/ranger/ranger.py:138: UserWarning: This overload of addcmul_ is deprecated:`
+warnings.filterwarnings("ignore")
+
 
 def main(config):
     logger = config.get_logger('train')
-    
+    device, device_ids = prepare_device(config['n_gpu'])
+    print(device, device_ids)
 
     # build model architecture, then print to console
     model = config.init_obj('arch', module_arch)
     # logger.info(model)
 
-    
+
     # setup data_loader instances
     data_loader = config.init_obj('data_loader', module_data)
     valid_data_loader = data_loader.split_validation()

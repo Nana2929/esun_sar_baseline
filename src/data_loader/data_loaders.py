@@ -14,20 +14,20 @@ from process_data.utils import load_pickle, get_feats_name
 
 # def padding_mask_collate(batch):
 #     """
-#     return 
+#     return
 #     """
 
 
 def batch_index_collate(data):
     data = list(zip(*data))
     y = torch.stack(data[1], 0)
-    
+
     batch_indices = []
     for i, d in enumerate(data[0]):
         batch_indices += [i] * int(d.size()[0])
-        
+
     return (
-        (torch.Tensor(batch_indices), torch.cat(data[0]).float()), 
+        (torch.Tensor(batch_indices), torch.cat(data[0]).float()),
         y.float()
     )
 
@@ -41,11 +41,12 @@ class MaxLenDataLoader(BaseDataLoader):
             self.load_xs(data_path)
 
         def load_xs(self, data_path):
-            print('loading data')
+            print(f'loading data from {data_path}')
             pkl = load_pickle(data_path)
             self.data = []
             data_count = 0
             for k, v in pkl.items():
+
                 masks = v.train_mask if self.training else v.test_mask
                 for e in masks:
                     e += 1
@@ -71,10 +72,11 @@ class MaxLenDataLoader(BaseDataLoader):
             for seq_idx, (source, data) in enumerate(zip(sources, datas)):
                 if source != source_type:
                     continue
-                d = [data[feat_name] if not(max_seq_idx == seq_idx and feat_name=='sar_flag') else 2 for feat_name in feats_name]
+                d = [data[feat_name] if not (max_seq_idx == seq_idx and feat_name ==
+                                             'sar_flag') else 2 for feat_name in feats_name]
                 ret.append((seq_idx, d))
             return ret
-                
+
         def __getitem__(self, i):
             data = self.data[i]
             sources = data.sources
@@ -88,7 +90,6 @@ class MaxLenDataLoader(BaseDataLoader):
                 y = cust_data[-1].alert_key
             # cust_data[-1].sar_flag = 0.5
             return [x, y]
-            
 
     class BatchCollate:
         def __init__(self, max_len=512, training=True):
@@ -113,20 +114,19 @@ class MaxLenDataLoader(BaseDataLoader):
                 ys = torch.tensor(ys).float()
             return [
                 [torch.tensor(b).long() for b in batch_idxs],
-                [torch.tensor(s).long() for s in seq_idxs], 
-                [torch.tensor(x).float() for x in ret_xs],  # (ccba, cdtx, dp, remit, cinfo), 
+                [torch.tensor(s).long() for s in seq_idxs],
+                [torch.tensor(x).float() for x in ret_xs],  # (ccba, cdtx, dp, remit, cinfo),
                 ys
             ]
-            
-    
-    def __init__(self, 
+
+    def __init__(self,
                  data_path, max_len=512,
                  batch_size=128, shuffle=True, fold_idx=-1, validation_split=0.0, num_workers=1, training=True):
         cls = self.__class__
         self.dataset = cls.InnerDataset(data_path, training=training)
         self.training = training
         super().__init__(
-            self.dataset, 
-            batch_size, shuffle, fold_idx, validation_split, num_workers, 
+            self.dataset,
+            batch_size, shuffle, fold_idx, validation_split, num_workers,
             collate_fn=cls.BatchCollate(max_len, training)
         )

@@ -1,11 +1,10 @@
-device='5'
+device='0'
 save_dir='../save_dir/bigger_tp99/'
 
 # train 5fold
 for fold_idx in {0..4}
-do  
+do
     echo === fold $fold_idx ===
-
     # train 49
     python3 train.py \
         -c=config.json \

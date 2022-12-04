@@ -1,0 +1,23 @@
+Run test for /home/nanaeilish/projects/Github/esun_sar_baseline/save_dir/bigger_tp99, information: 5fold-ensemble-1202.
+loading data from /home/nanaeilish/projects/Github/esun_sar_baseline/cust_data.pkl
+num of data: 1845
+=== run fold 0 ===
+load checkpoint from /home/nanaeilish/projects/Github/esun_sar_baseline/save_dir/bigger_tp99/fold0/model_best.pth
+Traceback (most recent call last):
+  File "test.py", line 111, in <module>
+    main(config, output_dir)
+  File "test.py", line 60, in main
+    out = run_test_of_single_fold(config, output_dir, fold_idx, data_loader)
+  File "test.py", line 27, in run_test_of_single_fold
+    model.load_state_dict(state_dict)
+  File "/home/nanaeilish/micromamba/envs/esun-ai-open/lib/python3.8/site-packages/torch/nn/modules/module.py", line 1667, in load_state_dict
+    raise RuntimeError('Error(s) in loading state_dict for {}:\n\t{}'.format(
+RuntimeError: Error(s) in loading state_dict for SarModel:
+	Missing key(s) in state_dict: "feature_embedders.4.embeddings.3.bias". 
+	Unexpected key(s) in state_dict: "feature_embedders.4.embeddings.4.weight", "feature_embedders.4.embeddings.4.bias". 
+	size mismatch for feature_embedders.4.embeddings.3.weight: copying a param with shape torch.Size([3, 32]) from checkpoint, the shape in current model is torch.Size([32, 1]).
+	size mismatch for feature_embedders.4.encoder.batch_norm1.weight: copying a param with shape torch.Size([160]) from checkpoint, the shape in current model is torch.Size([128]).
+	size mismatch for feature_embedders.4.encoder.batch_norm1.bias: copying a param with shape torch.Size([160]) from checkpoint, the shape in current model is torch.Size([128]).
+	size mismatch for feature_embedders.4.encoder.batch_norm1.running_mean: copying a param with shape torch.Size([160]) from checkpoint, the shape in current model is torch.Size([128]).
+	size mismatch for feature_embedders.4.encoder.batch_norm1.running_var: copying a param with shape torch.Size([160]) from checkpoint, the shape in current model is torch.Size([128]).
+	size mismatch for feature_embedders.4.encoder.dense1.weight_v: copying a param with shape torch.Size([1024, 160]) from checkpoint, the shape in current model is torch.Size([1024, 128]).

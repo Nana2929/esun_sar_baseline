@@ -7,6 +7,20 @@ import torch.nn.functional as F
 
 
 def recall_n(output, target):
+    """Calculate Recall@N-1
+    Zip both, sort in ascending order, so that the first encountered
+    1 pair is the least-prob (recall N) pair; set the flag to True here,
+    then if the flag is True, the second-encountered pair is the (recall N-1) pair,
+    break here because we have identified `len(target) - i` as the
+    `抓到N-1個真正報SAR案件所需的名單量`.
+    
+    Args:
+        output (_type_): model prediction
+        target (_type_): gold answer
+
+    Returns:
+        _type_: _description_
+    """
     comb = list(zip(output, target))
     comb.sort(key=lambda x:x[0])
     flag = False
