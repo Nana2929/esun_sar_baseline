@@ -10,6 +10,10 @@ from process_data.utils import get_feats_name
 
 class CnnEncoder(nn.Module):
     """
+    kaggle比賽MoA第二名解法: 1D CNN Feature Extractor
+    使用單層fc學習 feature ordering
+    比賽：Mechanisms of Action (MoA) Prediction competition
+    https://www.kaggle.com/c/lish-moa/
     src: https://github.com/baosenguo/Kaggle-MoA-2nd-Place-Solution/blob/main/training/1d-cnn-train.ipynb
     """
     def __init__(self, num_features, num_targets=128, hidden_size=512, dropout=0.3):
@@ -54,7 +58,7 @@ class CnnEncoder(nn.Module):
         self.max_po_c2 = nn.MaxPool1d(kernel_size=4, stride=2, padding=1)
 
         self.flt = nn.Flatten()
-        
+
         self.batch_norm3 = nn.BatchNorm1d(cha_po_2)
         self.dropout3 = nn.Dropout(dropout)
         self.dense3 = nn.utils.weight_norm(nn.Linear(cha_po_2, num_targets))
@@ -99,13 +103,17 @@ class CnnEncoder(nn.Module):
         return x
 
 
+
 class FeatureEmbedder(torch.nn.Module):
     """
     Classical embeddings generator
     src: tabnet
     """
 
-    def __init__(self, num_cat_dict, data_source, emb_feat_dim=32, hidden_size=128, hidden_size_coeff=6, dropout=0.2):
+    def __init__(self, num_cat_dict, data_source, emb_feat_dim=32,
+                hidden_size=128,
+                hidden_size_coeff=6,
+                dropout=0.2):
         """This is an embedding module for an entire set of features
         Parameters
         ----------
@@ -116,22 +124,28 @@ class FeatureEmbedder(torch.nn.Module):
         self.feats_type = feats_type
 
         self.source_type_embedding = nn.Parameter(torch.randn(hidden_size))
+
         self.embeddings = torch.nn.ModuleList(
-            [   
+            [
                 nn.Linear(1, emb_feat_dim) if feat_type == FeatureType.NUMERICAL
                 else nn.Embedding(num_cat_dict[data_source][feat_name], emb_feat_dim)
                 for feat_name, feat_type in zip(feats_name, feats_type)
             ]
         )
+        # 每個feature成為一個emb dim = 32的embedding
+        # 共8個features，於是整體維度 = 8 * 32 = 256
         self.encoder = CnnEncoder(
-            num_features=len(feats_name)*emb_feat_dim, 
-            num_targets=hidden_size, 
+            num_features=len(feats_name)*emb_feat_dim,
+            num_targets=hidden_size,
             hidden_size=hidden_size*hidden_size_coeff,
             dropout=dropout
         )
+        # encoder output dimension: num_targets = 128 (hidden_size)
+
 
 
     def forward(self, x):
+
         """
         Apply embeddings to inputs
         Inputs should be (batch_size, input_dim)
@@ -147,6 +161,6 @@ class FeatureEmbedder(torch.nn.Module):
                 inputs = inputs.long()
             embs.append(emb_layer(inputs))
         embs = torch.cat(embs, dim=1)
-        embs = self.encoder(embs)
-        embs += self.source_type_embedding
+        embs = self.encoder(embs) # hidden size
+        embs += self.source_type_embedding # 
         return embs

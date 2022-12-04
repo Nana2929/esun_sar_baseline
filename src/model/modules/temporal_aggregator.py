@@ -13,14 +13,14 @@ class TemporalGruAggregator(nn.Module):
         self.gru = nn.GRU(
             input_size = input_size,
             hidden_size = hidden_size,
-            num_layers = num_layers, 
+            num_layers = num_layers,
             dropout=dropout,
             batch_first = True
         )
     def forward(self, x, mask):
         x = x * (mask[:, :, None])
         x, _ = self.gru(x)
-        
+
         output_idx = mask.sum(axis=1) - 1
         x = x[range(len(mask)), output_idx]
         return x
@@ -54,9 +54,9 @@ class TemporalDebertaAggregator(nn.Module):
         super().__init__()
         self.cls = nn.Parameter(torch.randn(hidden_size), requires_grad=True)
         config = DebertaV2Config(
-            vocab_size=1, 
-            hidden_size=hidden_size, 
-            num_hidden_layers=num_layers, 
+            vocab_size=1,
+            hidden_size=hidden_size,
+            num_hidden_layers=num_layers,
             intermediate_size=hidden_size*4,
             num_attention_heads=num_head,
             hidden_dropout_prob=dropout,
@@ -66,10 +66,15 @@ class TemporalDebertaAggregator(nn.Module):
         self.encoder = DebertaV2Model(config).encoder
 
     def forward(self, x, mask):
+        # adding special token, out_size = (bs, nrows+1, hidden)
+        ## get batch size
         bs = len(x)
-        # add special token, out_size = (bs, nrows+1, hidden)
+        ## constructing the cls token forms considering the batch
         cls = self.cls.view(1, -1).repeat(bs, 1, 1)
+        ## reconstruct the inputs
         x = torch.cat([cls, x], dim=1)
+
+        
         mask = torch.cat([torch.ones(bs).bool().to(x.get_device())[:, None] , mask], dim=1)
         x = self.encoder(x, mask, output_hidden_states=False).last_hidden_state
         x = x[:, 0]
@@ -80,4 +85,4 @@ if __name__ == "__main__":
     import torch
     from temporal_aggregator import TemporalDebertaAggregator as td;
     model = td()
-    out = model(torch.randn(4, 512, 128), torch.ones(4, 512).bool())  
+    out = model(torch.randn(4, 512, 128), torch.ones(4, 512).bool())

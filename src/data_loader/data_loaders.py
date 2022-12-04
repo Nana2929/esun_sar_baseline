@@ -46,9 +46,9 @@ class MaxLenDataLoader(BaseDataLoader):
             self.data = []
             data_count = 0
             for k, v in pkl.items():
-
                 masks = v.train_mask if self.training else v.test_mask
                 for e in masks:
+
                     e += 1
                     s = max(e - self.max_len, 0)
                     self.data.append(edict({
@@ -70,25 +70,34 @@ class MaxLenDataLoader(BaseDataLoader):
             max_seq_idx = len(sources) - 1
             feats_name = get_feats_name(config)
             for seq_idx, (source, data) in enumerate(zip(sources, datas)):
+                # seq_idx: 該feature_row在cust_data中的位置（和其他table混雜在一起）
+                # source: 該feature_row來自哪個table
                 if source != source_type:
                     continue
+                # 最後一個seq_idx 對應的feature row應該是 DataSource.CUSTINFO
+                # 在src/analysis_preprocess.ipynb中有把sar_flag merge進來
+                # 為最後一個feature
+                # 故這段是在檢查是否是 cust_info 中最後一個feature row 且 feature name 是 sar_flag
+                # 如果是的話則給2的值 （unknown）
                 d = [data[feat_name] if not (max_seq_idx == seq_idx and feat_name ==
                                              'sar_flag') else 2 for feat_name in feats_name]
-                ret.append((seq_idx, d))
+                ret.append((seq_idx, d)) # feature_row_index, feature_row as a list
             return ret
 
         def __getitem__(self, i):
-            data = self.data[i]
-            sources = data.sources
-            cust_data = data.cust_data
-
+            data = self.data[i]    # an alert-key transaction
+            sources = data.sources # the associated customer's row sources: a list of table sources [cdtx, custinfo, dp, dp, ...]
+            cust_data = data.cust_data # the associated customer's feature rows: a list of feature rows [{a row in cdtx}, {a row in custinfo}, ...]
+            # src/process_data/data_config.py
+            # DATA_SOURCES = [DataSource.CCBA, DataSource.CDTX, DataSource.DP, DataSource.REMIT, DataSource.CUSTINFO]
+            # flatten the feature rows
             x = [self.get_source_data(cust_data, sources, ds) for ds in DATA_SOURCES]
 
             if self.training:
                 y = cust_data[-1].sar_flag
             else:
                 y = cust_data[-1].alert_key
-            # cust_data[-1].sar_flag = 0.5
+
             return [x, y]
 
     class BatchCollate:
@@ -103,9 +112,11 @@ class MaxLenDataLoader(BaseDataLoader):
             ret_xs = [[] for i in range(5)]
 
             for batch_idx, x in enumerate(xs):
-                # add batch idx
+                # x: many customers 
                 for i, xi in enumerate(x):
+                    # xi: a customer
                     for seq_idx, v in xi:
+                        # v: a feature row of a customer
                         batch_idxs[i].append(batch_idx)
                         seq_idxs[i].append(seq_idx)
                         ret_xs[i].append(v)
