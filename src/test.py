@@ -11,20 +11,21 @@ import model.model as module_arch
 from parse_config import ConfigParser
 from utils import to_device
 
-
 def run_test_of_single_fold(config, output_dir, fold_idx, data_loader):
     print(f'=== run fold {fold_idx} ===')
 
     # load model
     model = config.init_obj('arch', module_arch)
+    # model = config.init_obj('arch', module_arch)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model_path = f'{output_dir}/fold{fold_idx}/model_best.pth'
     print(f'load checkpoint from {model_path}')
     checkpoint = torch.load(model_path, map_location=device)
     state_dict = checkpoint['state_dict']
+
     if config['n_gpu'] > 1:
         model = torch.nn.DataParallel(model)
-    model.load_state_dict(state_dict)
+    model.load_state_dict(state_dict, strict=False)
     model = model.to(device)
     model.eval()
 
@@ -57,6 +58,7 @@ def main(config, output_dir, num_fold=5):
     # get output of 5fold
     outputs = {}
     for fold_idx in range(num_fold):
+
         out = run_test_of_single_fold(config, output_dir, fold_idx, data_loader)
         for k, v in out.items():
             if k not in outputs:
@@ -79,9 +81,10 @@ def main(config, output_dir, num_fold=5):
             'probability': list(outputs.values())
         }
     )
-    submit['alery_keys'] = submit['alery_keys'].astype(int)
+    submit['alert_key'] = submit['alert_key'].astype(int)
     submit.sort_values(by='probability', inplace=True)
     submit.to_csv(f'{output_dir}/submission_{args.suffix}.csv', index=None)
+    print(f'Submission saved to {output_dir}/submission_{args.suffix}.csv')
 
 
 if __name__ == '__main__':
@@ -98,7 +101,8 @@ if __name__ == '__main__':
     args.add_argument('-s', '--suffix', default='5fold-ensemble', type=str,
                       help='suffix information of the output file')
     args.add_argument('-sp', '--sample_path', default='/home/nanaeilish/projects/Github/esun_sar_baseline/sample_submission.csv',
-                    type=str, help='sample submission file for public and private Leaderboard')
+                      type=str, help='sample submission file for public and private Leaderboard')
+    args.add_argument('-nf', '--n_fold', default=5, type=int)
     config = ConfigParser.from_args(args, test=True)
     args = args.parse_args()
 
@@ -106,9 +110,10 @@ if __name__ == '__main__':
     output_type = args.output_type
     output_dir = args.output_dir
     sample_path = args.sample_path
+    n_fold = args.n_fold
 
     os.makedirs(output_dir, exist_ok=True)
-    main(config, output_dir)
+    main(config, output_dir, num_fold=n_fold)
 # mb activate esun-ai-open
 # 1. process_data/data_config.py sar_flag那行要改成 TARGET type
 # 2. 要確認test.py那裡有吃到
