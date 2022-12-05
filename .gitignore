@@ -3,3 +3,5 @@
 *.pkl
 save_dir/
 __pycache__
+src/fiddle_data_loader.py
+fiddle_*
