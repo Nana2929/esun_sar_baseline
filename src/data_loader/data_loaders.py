@@ -45,7 +45,7 @@ class MaxLenDataLoader(BaseDataLoader):
             pkl = load_pickle(data_path)
             self.data = []
             data_count = 0
-            for k, v in pkl.items():
+            for cust_id, v in pkl.items():
                 masks = v.train_mask if self.training else v.test_mask
                 for e in masks:
 
@@ -53,7 +53,8 @@ class MaxLenDataLoader(BaseDataLoader):
                     s = max(e - self.max_len, 0)
                     self.data.append(edict({
                         'sources': v.sources[s:e],
-                        'cust_data': v.cust_data[s:e]
+                        'cust_data': v.cust_data[s:e],
+                        'cust_id': cust_id,
                     }))
                     data_count += 1
                     if data_count >= self.num_data:
@@ -77,17 +78,20 @@ class MaxLenDataLoader(BaseDataLoader):
                 # 最後一個seq_idx 對應的feature row應該是 DataSource.CUSTINFO
                 # 在src/analysis_preprocess.ipynb中有把sar_flag merge進來
                 # 為最後一個feature
-                # 故這段是在檢查是否是 cust_info 中最後一個feature row 且 feature name 是 sar_flag
+                # 故這段是在檢查是否是 cust_info 中最後一個 feature row 且 feature name 是 sar_flag
                 # 如果是的話則給2的值 （unknown）
                 d = [data[feat_name] if not (max_seq_idx == seq_idx and feat_name ==
                                              'sar_flag') else 2 for feat_name in feats_name]
-                ret.append((seq_idx, d)) # feature_row_index, feature_row as a list
+                ret.append((seq_idx, d))  # feature_row_index, feature_row as a list
             return ret
 
         def __getitem__(self, i):
             data = self.data[i]    # an alert-key transaction
-            sources = data.sources # the associated customer's row sources: a list of table sources [cdtx, custinfo, dp, dp, ...]
-            cust_data = data.cust_data # the associated customer's feature rows: a list of feature rows [{a row in cdtx}, {a row in custinfo}, ...]
+            # the associated customer's row sources: a list of table sources [cdtx, custinfo, dp, dp, ...]
+            sources = data.sources
+            # the associated customer's feature rows: a list of feature rows [{a row in cdtx}, {a row in custinfo}, ...]
+            cust_data = data.cust_data
+            cust_id = data.cust_id
             # src/process_data/data_config.py
             # DATA_SOURCES = [DataSource.CCBA, DataSource.CDTX, DataSource.DP, DataSource.REMIT, DataSource.CUSTINFO]
             # flatten the feature rows
@@ -98,7 +102,7 @@ class MaxLenDataLoader(BaseDataLoader):
             else:
                 y = cust_data[-1].alert_key
 
-            return [x, y]
+            return [x, y, cust_id]
 
     class BatchCollate:
         def __init__(self, max_len=512, training=True):
@@ -106,18 +110,18 @@ class MaxLenDataLoader(BaseDataLoader):
             self.training = training
 
         def __call__(self, datas):
-            xs, ys = list(zip(*datas))
-            batch_idxs = [[] for i in range(5)]
-            seq_idxs = [[] for i in range(5)]
-            ret_xs = [[] for i in range(5)]
+            xs, ys, cids = list(zip(*datas))
+            batch_idxs = [[] for _ in range(5)]
+            cust_ids = [[] for _ in range(5)]  # 12/16 for idx recovery and embedding lookup
+            seq_idxs = [[] for _ in range(5)]
+            ret_xs = [[] for _ in range(5)]
 
-            for batch_idx, x in enumerate(xs):
-                # x: many customers 
+            for batch_idx, (x, cid) in enumerate(zip(xs, cids)):
                 for i, xi in enumerate(x):
-                    # xi: a customer
                     for seq_idx, v in xi:
-                        # v: a feature row of a customer
+                        # v: a feature row of a customer corresponding to the alert_key
                         batch_idxs[i].append(batch_idx)
+                        cust_ids[i].append(cid)
                         seq_idxs[i].append(seq_idx)
                         ret_xs[i].append(v)
 
@@ -125,6 +129,7 @@ class MaxLenDataLoader(BaseDataLoader):
                 ys = torch.tensor(ys).float()
             return [
                 [torch.tensor(b).long() for b in batch_idxs],
+                cust_ids,
                 [torch.tensor(s).long() for s in seq_idxs],
                 [torch.tensor(x).float() for x in ret_xs],  # (ccba, cdtx, dp, remit, cinfo),
                 ys
