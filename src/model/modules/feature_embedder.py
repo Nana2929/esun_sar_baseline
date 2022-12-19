@@ -8,6 +8,7 @@ from process_data.data_config import CONFIG_MAP, FeatureType
 from process_data.utils import get_feats_name
 
 
+
 class CnnEncoder(nn.Module):
     """
     kaggle比賽MoA第二名解法: 1D CNN Feature Extractor
@@ -72,6 +73,7 @@ class CnnEncoder(nn.Module):
         x = x.reshape(x.shape[0],self.cha_1,
                         self.cha_1_reshape)
 
+        identity = x
         x = self.batch_norm_c1(x)
         x = self.dropout_c1(x)
         x = F.relu(self.conv1(x))
@@ -86,6 +88,14 @@ class CnnEncoder(nn.Module):
         x = self.batch_norm_c2_1(x)
         x = self.dropout_c2_1(x)
         x = F.relu(self.conv2_1(x))
+
+        # original network
+        x = F.relu(self.conv2_1(x))
+
+        # adding bypass
+        # t = self.conv2_1(x) + identity
+        # x = F.relu(t)
+
 
         x = self.batch_norm_c2_2(x)
         x = self.dropout_c2_2(x)
@@ -113,12 +123,13 @@ class FeatureEmbedder(torch.nn.Module):
     def __init__(self, num_cat_dict, data_source, emb_feat_dim=32,
                 hidden_size=128,
                 hidden_size_coeff=6,
-                dropout=0.2):
+                dropout=0.2, **kwargs):
         """This is an embedding module for an entire set of features
         Parameters
         ----------
         """
         super().__init__()
+
         feats_name = get_feats_name(CONFIG_MAP[data_source])
         feats_type = [getattr(CONFIG_MAP[data_source], name) for name in feats_name]
         self.feats_type = feats_type
@@ -140,9 +151,6 @@ class FeatureEmbedder(torch.nn.Module):
             hidden_size=hidden_size*hidden_size_coeff,
             dropout=dropout
         )
-        # encoder output dimension: num_targets = 128 (hidden_size)
-
-
 
     def forward(self, x):
 
@@ -162,5 +170,5 @@ class FeatureEmbedder(torch.nn.Module):
             embs.append(emb_layer(inputs))
         embs = torch.cat(embs, dim=1)
         embs = self.encoder(embs) # hidden size
-        embs += self.source_type_embedding # 
+        embs += self.source_type_embedding #
         return embs
