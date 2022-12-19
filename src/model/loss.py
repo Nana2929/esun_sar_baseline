@@ -10,7 +10,7 @@ def weighted_bce_loss(output, target, w_p=99, w_n=1, epsilon=1e-7):
     return loss
 
 
-def cost_sensetive_bce_loss(output, target, epsilon=1e-7, w_tp=99, w_tn=0, w_fp=1, w_fn=99):
+def cost_sensetive_bce_loss(output, target, epsilon=1e-7, w_tp=3, w_tn=0, w_fp=3, w_fn=99):
 
     fn = w_fn * torch.mean(target * torch.log(output+epsilon))
     tp = w_tp * torch.mean(target * torch.log((1-output)+epsilon))
@@ -40,7 +40,6 @@ def get_gauss_label(label, n_classes, amplifier, noise=0):
     gauss_label = stats2.norm.pdf(np.arange(n), label_new, half_int / 2)
     gauss_label /= np.sum(gauss_label)
     return gauss_label
-
 
 def get_gaussian_label_distribution(n_classes, std=0.5):
     cls = []
@@ -94,7 +93,6 @@ def cross_entropy_loss_bce(logits, target,
 def cross_entropy_loss_one_hot(logits, target,
                                reduction='mean', epsilon=1e-7):
     """taget size=torch.Size([batch_size, n_classes])"""
-    # logp = F.log_softmax(logits, dim=1)
     logp = F.log_softmax(logits, dim=1)
     loss = torch.sum(-logp * target, dim=1)
 
@@ -127,7 +125,6 @@ def label_smoothing_criterion(alpha=0.1,
         # print('logits: ', logits)  # labels shape: torch.Size([64])
         # print('labels shape: ', labels.shape)
         # print('labels type ', type(labels))
-        labels = labels.long()
         one_hot = one_hot_encoding(labels, n_classes).float().to(device)
         if distribution == 'uniform':
             uniform = torch.ones_like(one_hot).to(device) / n_classes
