@@ -74,9 +74,10 @@ def to_device(data, device):
     return data.to(device)
 
 def to_device(x, device, training=True):
-    (b_idx, s_idx, data, target) = x
+    (b_idx, c_idx, s_idx, data, target) = x
     return [
         [b.to(device) for b in b_idx],
+        c_idx, # ids re not tensors
         [s.to(device) for s in s_idx],
         [d.to(device) for d in data],
         target.to(device) if training else target
