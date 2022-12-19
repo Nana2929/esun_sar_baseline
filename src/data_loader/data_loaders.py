@@ -45,10 +45,10 @@ class MaxLenDataLoader(BaseDataLoader):
             pkl = load_pickle(data_path)
             self.data = []
             data_count = 0
+            # 7708 unique customers, 7264 in training data
             for cust_id, v in pkl.items():
                 masks = v.train_mask if self.training else v.test_mask
                 for e in masks:
-
                     e += 1
                     s = max(e - self.max_len, 0)
                     self.data.append(edict({
@@ -86,7 +86,8 @@ class MaxLenDataLoader(BaseDataLoader):
             return ret
 
         def __getitem__(self, i):
-            data = self.data[i]    # an alert-key transaction
+            data = self.data[i]
+            # an alert-key transaction
             # the associated customer's row sources: a list of table sources [cdtx, custinfo, dp, dp, ...]
             sources = data.sources
             # the associated customer's feature rows: a list of feature rows [{a row in cdtx}, {a row in custinfo}, ...]
