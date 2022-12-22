@@ -54,6 +54,7 @@ class MaxLenDataLoader(BaseDataLoader):
                     self.data.append(edict({
                         'sources': v.sources[s:e],
                         'cust_data': v.cust_data[s:e],
+                        'cust_id': cust_id,
                     }))
                     data_count += 1
                     if data_count >= self.num_data:
@@ -100,21 +101,20 @@ class MaxLenDataLoader(BaseDataLoader):
             sources = data.sources
             # the associated customer's feature rows: a list of feature rows [{a row in cdtx}, {a row in custinfo}, ...]
             cust_data = data.cust_data
+            cust_id = data.cust_id
             # src/process_data/data_config.py
             # DATA_SOURCES = [DataSource.CCBA, DataSource.CDTX, DataSource.DP, DataSource.REMIT, DataSource.CUSTINFO]
             # flatten the feature rows
             if self.training:
                 y = cust_data[-1].sar_flag
-                alert_key = cust_data[-1].alert_key
 
             else:
                 y = cust_data[-1].alert_key
-                alert_key = y
             alert_date = cust_data[-1].date
             x = [self.get_source_data(cust_data, sources, ds, alert_date=alert_date) for ds in DATA_SOURCES]
 
             ########### 12/19 update on Ting's suggestion ########
-            return [x, y, alert_key]
+            return [x, y, cust_id]
 
     class BatchCollate:
         def __init__(self, max_len=512, training=True):
@@ -122,18 +122,18 @@ class MaxLenDataLoader(BaseDataLoader):
             self.training = training
 
         def __call__(self, datas):
-            xs, ys, aks = list(zip(*datas))
+            xs, ys, cids = list(zip(*datas))
             batch_idxs = [[] for _ in range(5)]
-            alert_keys = [[] for _ in range(5)]  # 12/16 for idx recovery and embedding lookup
+            cust_ids = [[] for _ in range(5)]  # 12/16 for idx recovery and embedding lookup
             seq_idxs = [[] for _ in range(5)]
             ret_xs = [[] for _ in range(5)]
 
-            for batch_idx, (x, ak) in enumerate(zip(xs, aks)):
+            for batch_idx, (x, cid) in enumerate(zip(xs, cids)):
                 for i, xi in enumerate(x):
                     for seq_idx, v in xi:
                         # v: a feature row of a customer corresponding to the alert_key
                         batch_idxs[i].append(batch_idx)
-                        alert_keys[i].append(ak)
+                        cust_ids[i].append(cid)
                         seq_idxs[i].append(seq_idx)
                         ret_xs[i].append(v)
 
@@ -141,7 +141,7 @@ class MaxLenDataLoader(BaseDataLoader):
                 ys = torch.tensor(ys).float()
             return [
                 [torch.tensor(b).long() for b in batch_idxs],
-                alert_keys, 
+                cust_ids,
                 [torch.tensor(s).long() for s in seq_idxs],
                 [torch.tensor(x).float() for x in ret_xs],  # (ccba, cdtx, dp, remit, cinfo),
                 ys

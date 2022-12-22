@@ -13,29 +13,28 @@ from utils import prepare_device
 from ranger import Ranger
 
 
-# fix random seeds for reproducibility
-SEED = 123
-torch.manual_seed(SEED)
-torch.backends.cudnn.deterministic = True
-torch.backends.cudnn.benchmark = False
-# torch.backends.cudnn.enabled = False
-os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
-np.random.seed(SEED)
-
 import warnings
 # suppress `/home/nanaeilish/projects/Github/Ranger-Deep-Learning-Optimizer/ranger/ranger.py:138: UserWarning: This overload of addcmul_ is deprecated:`
 warnings.filterwarnings("ignore")
 
 
-def main(config):
+def main(config, seed):
+    # fix random seeds for reproducibility
+    SEED = seed
+    torch.manual_seed(SEED)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    # torch.backends.cudnn.enabled = False
+    os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
+    np.random.seed(SEED)
     logger = config.get_logger('train')
+    logger.info(f"Training with seed {SEED}...")
     device, device_ids = prepare_device(config['n_gpu'])
     print(device, device_ids)
 
     # build model architecture, then print to console
     model = config.init_obj('arch', module_arch)
     # logger.info(model)
-
 
     # setup data_loader instances
     data_loader = config.init_obj('data_loader', module_data)
@@ -46,7 +45,7 @@ def main(config):
     model = model.to(device)
     if len(device_ids) > 1:
         model = torch.nn.DataParallel(model, device_ids=device_ids)
-    print(f"Usubg GPU {device_ids}!")
+    print(f"Using GPU {device_ids}!")
 
     # get function handles of loss and metrics
     criterion = getattr(module_loss, config['loss'])
@@ -77,6 +76,7 @@ if __name__ == '__main__':
                       help='path to latest checkpoint (default: None)')
     args.add_argument('-d', '--device', default=None, type=str,
                       help='indices of GPUs to enable (default: all)')
+    args.add_argument('-s', '--seed', default=123, type=int)
 
     # custom cli options to modify configuration from default values given in json file.
     CustomArgs = collections.namedtuple('CustomArgs', 'flags type target')
@@ -88,5 +88,6 @@ if __name__ == '__main__':
         CustomArgs(['--save', '--save_dir'], type=str, target='trainer;save_dir'),
     ]
     config = ConfigParser.from_args(args, options=options)
+    args = args.parse_args()
     # os.system(f"cp {args.parse_args().config} {config['trainer']['save_dir']}")
-    main(config)
+    main(config, args.seed)

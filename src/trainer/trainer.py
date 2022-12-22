@@ -69,30 +69,31 @@ class Trainer(BaseTrainer):
             targets = []
             outputs = []
 
-            cust_embeds = []
+            ########################################
+            alertkey_embeds = []
             last_batch_idx = len(self.data_loader)
             for batch_idx, (batch) in enumerate(self.data_loader):
                 # data, target = to_device(data, self.device), to_device(target, self.device)
-                b_idx, c_idx, s_idx, data, target = to_device(batch, device=self.device, training=True)
-                b2cmap = {}
-                for bids, cids in zip(b_idx, c_idx):
-                    for bid, cid in zip(bids, cids):
+                b_idx, a_idx, s_idx, data, target = to_device(batch, device=self.device, training=True)
+                b2amap = {}
+                for bids, aids in zip(b_idx, a_idx):
+                    for bid, aid in zip(bids, aids):
                         bid = bid.item()
-                        if bid in b2cmap:
-                            assert b2cmap[bid] == cid
-                        b2cmap[bid] = cid
-                # pprint(b2cmap)
-                # c_idx is not tensor, just list of list of cust_ids
+                        if bid in b2amap:
+                            assert b2amap[bid] == aid
+                        b2amap[bid] = aid
+
                 self.optimizer.zero_grad()
                 output, tempagg_outs = self.model(b_idx, s_idx, data)
                 tempagg_outs = tempagg_outs.detach().cpu().numpy().tolist()
 
-                pklpath = f'{embed_path}/cust_embeds_epoch{epoch}_batch{batch_idx}.pkl'
-                cust_embeds = {b2cmap[id]: np.array(v) for id, v in enumerate(tempagg_outs)}
+                pklpath = f'{embed_path}/alert_embeds_epoch{epoch}_batch{batch_idx}.pkl'
+                alertkey_embeds = {b2amap[id]: np.array(v) for id, v in enumerate(tempagg_outs)}
                 with open(pklpath, 'wb') as f:
-                    self.logger.info(f'{epoch} Saving batch {batch_idx} cust_embeddings ...')
-                    pickle.dump(cust_embeds, f)
+                    # self.logger.info(f'{epoch} Saving batch {batch_idx} cust_embeddings ...')
+                    pickle.dump(alertkey_embeds, f)
 
+                ########################################
                 loss = self.criterion(output, target)
                 loss.backward()
 
